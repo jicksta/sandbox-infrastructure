@@ -1,5 +1,6 @@
 -module(inbound_agi_tunnel).
 -export([start/0]).
+-compile(export_all).
 
 start() ->
 	io:format("Starting server~n"),
@@ -60,8 +61,8 @@ wait_for_agi_leg_or_timeout(Username) ->
     ProcessDictionaryPid ! {tunnel_waiting, self(), Username},
     receive
         {bridge_request, FromAsterisk} -> {bridge_legs, FromAsterisk}
-        after 1800 ->
-            % Timeout after 30 minutes
+        after 5 ->
+            % Timeout after 5 minutes
             ProcessDictionaryPid ! {tunnel_closed, Username},
             timeout
     end.
@@ -74,7 +75,7 @@ check_authentication(TextualData)  ->
         length(TextualData) =:= 33; tl(TextualData) =:= "\n" ->
             MD5 = lists:sublist(TextualData, 32),
         	% Get the username based on the MD5 Hash
-        	case(remote_services:username_for_md5(MD5)) of
+        	case(services:username_for_md5(MD5)) of
         	    {found, Username} -> {ok, Username};
         	    not_found -> not_found
         	end;

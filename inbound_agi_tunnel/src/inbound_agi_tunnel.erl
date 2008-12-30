@@ -69,13 +69,14 @@ wait_for_agi_leg_or_timeout(Username) ->
 
 
 % The authentication must be exact 33 bytes: 32 for the MD5 and 1 for the "\n" line delimiter.
-check_authentication(TextualData) when length(TextualData) =:= 33; tl(TextualData) =:= "\n" ->
-    MD5 = lists:sublist(TextualData, 32),
-	% Get the username based on the MD5 Hash
-	case(remote_services:username_for_md5(MD5)) of
-	    {found, Username} -> {ok, Username};
-	    not_found -> not_found
-	end.
-
-% Data must be 33 bytes. If it's not, it can't be valid.
-check_authentication(BadData) -> not_allowed.
+check_authentication(TextualData)  ->
+    if 
+        length(TextualData) =:= 33; tl(TextualData) =:= "\n" ->
+            MD5 = lists:sublist(TextualData, 32),
+        	% Get the username based on the MD5 Hash
+        	case(remote_services:username_for_md5(MD5)) of
+        	    {found, Username} -> {ok, Username};
+        	    not_found -> not_found
+        	end;
+        true -> not_found
+    end.

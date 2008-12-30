@@ -1,6 +1,8 @@
 % This module should both log to the console and a log file for debugging purposes.
 
 -module(reporter).
--export([unauthenticated/1]).
+-export([adhearsion_connection_timed_out/1, bad_md5/1]).
 
-unauthenticated(IP_ADDRESS) -> todo.
+adhearsion_connection_timed_out(Username) -> ok.
+
+bad_md5(MD5) -> todo.

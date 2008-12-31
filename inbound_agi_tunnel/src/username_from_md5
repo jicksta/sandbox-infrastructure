@@ -1,4 +1,12 @@
 #!/usr/bin/env ruby
+
+# Temporary mocking:
+print "jicksta"
+exit
+
+
+
+
 require 'rubygems'
 require 'active_support'
 

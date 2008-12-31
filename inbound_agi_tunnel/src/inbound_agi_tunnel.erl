@@ -7,13 +7,22 @@ start() ->
 	register(process_dictionary, spawn_link(fun process_dictionary/0)),
 	{ok, AdhearsionServerSocket} = gen_tcp:listen(20000, [list, {packet, line}, {active, false}]),
 	{ok, AsteriskServerSocket}   = gen_tcp:listen(4574,  [list, {packet, line}, {active, false}]),
-	spawn_link(fun() -> receive_adhearsion_connection_loop(AdhearsionServerSocket) end),
-    spawn_link(fun() -> receive_asterisk_connection_loop(AsteriskServerSocket) end),
+	io:format("Listening on ports~n"),
+	Adhearsion = spawn_link(fun() -> receive_adhearsion_connection_loop(AdhearsionServerSocket) end),
+    Asterisk   = spawn_link(fun() -> receive_asterisk_connection_loop(AsteriskServerSocket) end),
     receive
         stop ->
             gen_tcp:close(AdhearsionServerSocket),
-            gen_tcp:close(AsteriskServerSocket)
-    end.
+            gen_tcp:close(AsteriskServerSocket);
+        {'EXIT', Adhearsion, Why} ->
+            io:format("Adhearsion connection loop error! ~s~n", [Why]);
+        {'EXIT', Asterisk, Why} ->
+            io:format("Asterisk connection loop error! ~s~n", [Why]);
+        {'EXIT', Other, Why} ->
+            io:format("PROCESS CRASH: [~w] ~s~n", [Other, Why])
+    end,
+    gen_tcp:close(AdhearsionServerSocket),
+    gen_tcp:close(AsteriskServerSocket).
 
 receive_asterisk_connection_loop(ServerSocket) ->
     {ok, FromAsterisk} = gen_tcp:accept(ServerSocket),
@@ -52,16 +61,20 @@ handle_asterisk_connection(FromAsterisk) ->
     end.
 
 handle_adhearsion_connection(FromAdhearsion) ->
+    io:format("handle_adhearsion_connection~n"),
     receive
         start ->
             % Receive just the authentication string
-            ok = inet:setopts(FromAdhearsion, {active, once}),
+            ok = inet:setopts(FromAdhearsion, [{active, once}]),
+            io:format("Handling an Adhearsion connection. Expecting initial data next~n"),
             handle_adhearsion_connection(FromAdhearsion);
-        {tcp, FromAdhearsion, InitialData} ->
+        {tcp, _Socket, InitialData} ->
+            io:format("Got initial data: '~s'~n", [InitialData]),
             case(check_authentication(InitialData)) of
         	    not_allowed -> reporter:new_connection_denied();
         	    not_found   -> reporter:connection_requested_for_nonexistent_hash();
-        		Username    ->
+        		{ok, Username} ->
+        		    io:format("Adhearsion request from ~s~n", [Username]),
         		    case(wait_for_agi_leg_or_timeout(Username)) of
         		        timeout ->
         		            reporter:adhearsion_connection_timed_out(Username),
@@ -70,13 +83,15 @@ handle_adhearsion_connection(FromAdhearsion) ->
         		            start_tunnel_session(Username, FromAdhearsion, FromAsterisk, Headers)
         	        end
         	end;
-        Error -> {error, Error}
+        Error ->
+            io:format("Got a gen_tcp error! ~w~n", [Error]),
+            {error, Error}
     end.
 
 % Yay! A connection has been made. Let's now start forwarding packets back and forth.
 start_tunnel_session(Username, FromAdhearsion, FromAsterisk, Headers) ->
-    ok = inet:setopts(FromAdhearsion, {active, true}),
-    ok = inet:setopts(FromAsterisk, {active, true}),
+    ok = inet:setopts(FromAdhearsion, [{active, true}]),
+    ok = inet:setopts(FromAsterisk, [{active, true}]),
     
     % Because the Asterisk PID had to read the headers to properly service itself, we'll write them back (in reverse order)
     lists:foreach(fun(Header) ->
@@ -158,7 +173,7 @@ tunnel_loop(Username, FromAdhearsion, FromAsterisk) ->
 %     receive
 %         stop  -> Parent ! stopped;
 %         start ->
-%             ok = inet:setopts(Socket, {active, true}),
+%             ok = inet:setopts(Socket, [{active, true}]),
 %             line_reading_loop(Parent, Socket);
 %         {tcp, Socket, Line} ->
 %             Parent ! {Socket, data, Line},
@@ -173,7 +188,7 @@ wait_for_agi_leg_or_timeout(Username) ->
     receive
         {bridge_request, FromAsterisk, Buffer} ->
             {bridge_legs, FromAsterisk, Buffer}
-        after 300 ->
+        after 300 * 1000 ->
             % Timeout after 5 minutes
             ProcessDictionaryPid ! {tunnel_closed, Username},
             timeout
@@ -181,8 +196,9 @@ wait_for_agi_leg_or_timeout(Username) ->
 
 % The authentication request text must be exact 33 bytes: 32 for the MD5 and 1 for the "\n" line delimiter.
 check_authentication(TextualData)  ->
+    [LastCharacter|_] = lists:reverse(TextualData),
     if 
-        length(TextualData) =:= 33; tl(TextualData) =:= "\n" ->
+        length(TextualData) =:= 33; LastCharacter =:= "\n" ->
             MD5 = chomp(TextualData),
         	% Get the username based on the MD5 Hash
         	case(username_for_md5(MD5)) of
@@ -194,7 +210,7 @@ check_authentication(TextualData)  ->
 
 extract_username_and_headers_via_agi(FromAsterisk) -> extract_username_and_headers_via_agi(FromAsterisk, []).
 extract_username_and_headers_via_agi(FromAsterisk, Headers) ->
-    ok = inet:setopts(FromAsterisk, {active, once}),
+    ok = inet:setopts(FromAsterisk, [{active, once}]),
     receive
         {tcp, FromAsterisk, "\n"} ->
             % This is the blank line which ends the headers' section of the AGI protocol.
@@ -244,12 +260,8 @@ username_for_md5(MD5) ->
     end.
 
 chomp(String) ->
-    case(lists:tl(String) =:= "\n") of
+    [LastCharacter|_] = lists:reverse(String),
+    case(LastCharacter =:= "\n") of
         true -> lists:sublist(String, length(String) - 1);
         false -> String
     end.
-
-% times(0, Fun) -> done.
-% times(Number, Fun) ->
-%     Fun(),
-%     times(Number - 1).

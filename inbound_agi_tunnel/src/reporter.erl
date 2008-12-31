@@ -3,10 +3,13 @@
 -module(reporter).
 -export([adhearsion_connection_timed_out/1, bad_md5/1, new_connection_denied/0, connection_requested_for_nonexistent_hash/0,
          incoming_sip_call_without_adhearsion_leg/1, starting_tunnel_loop_with_headers/1, asterisk_agi_initialization_error/1,
-         duplicate_adhearsion_connection/0]).
+         duplicate_adhearsion_connection/0, session_gracefully_stopped/1]).
 
 adhearsion_connection_timed_out(Username) ->
     puts("adhearsion_connection_timed_out ~s", [Username]).
+
+session_gracefully_stopped(Username) ->
+    puts("session_gracefully_stopped ~s~n", [Username]).
 
 duplicate_adhearsion_connection() ->
     puts("duplicate_adhearsion_connection").

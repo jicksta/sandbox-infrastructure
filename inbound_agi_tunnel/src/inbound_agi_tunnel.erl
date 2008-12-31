@@ -125,6 +125,12 @@ tunnel_loop(Username, FromAdhearsion, FromAsterisk) ->
         {tcp, FromAsterisk, Line} ->
             gen_tcp:send(FromAdhearsion, Line),
             tunnel_loop(Username, FromAdhearsion, FromAsterisk);
+        {tcp_closed, FromAsterisk} ->
+            reporter:session_gracefully_stopped(Username),
+            gen_tcp:close(FromAdhearsion);
+        {tcp_closed, FromAdhearsion} ->
+            reporter:session_gracefully_stopped(Username),
+            gen_tcp:close(FromAsterisk);
         Error ->
             io:format("There was an error on one of the legs: ~w~n", [Error]),
             gen_tcp:close(FromAdhearsion),
@@ -187,7 +193,6 @@ extract_username_and_headers_via_agi(FromAsterisk, Headers) ->
 process_dictionary() -> process_dictionary(dict:new()).
 
 process_dictionary(Dictionary) ->
-    io:format("DICTIONARY: ~w~n", [Dictionary]),
     receive
         {tunnel_waiting, AdhearsionPid, Username} ->
             % TODO: catch the exception if this is not found. We're checking to see if it exists in the dictionary already.

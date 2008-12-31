@@ -53,7 +53,7 @@ handle_asterisk_connection(FromAsterisk) ->
             receive
                 no_socket_waiting ->
                     reporter:incoming_sip_call_without_adhearsion_leg(Username),
-                    gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"FAILED\"\n"),
+                    gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"FAILED\""),
                     gen_tcp:close(FromAsterisk);
                 {found, AdhearsionPid} ->
                     gen_tcp:controlling_process(FromAsterisk, AdhearsionPid),
@@ -62,7 +62,7 @@ handle_asterisk_connection(FromAsterisk) ->
             end;
         Error ->
             reporter:asterisk_agi_initialization_error(Error),
-            gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"FAILED\"\n"),
+            gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"FAILED\""),
             gen_tcp:close(FromAsterisk)
     end.
 
@@ -110,7 +110,7 @@ start_tunnel_session(Username, FromAdhearsion, FromAsterisk, Headers) ->
     ok = inet:setopts(FromAsterisk, [{active, true}, {nodelay, true}]),
     
     gen_tcp:send(FromAdhearsion, "authentication accepted\n"),
-    gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"SUCCESS\"\n"),
+    gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"SUCCESS\""),
     
     % Because the Asterisk PID had to read the headers to properly service itself, we'll write them back (in reverse order)
     lists:foreach(fun(Header) ->

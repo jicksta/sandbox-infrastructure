@@ -52,14 +52,18 @@ handle_asterisk_connection(FromAsterisk) ->
             ProcessDictionary ! {tunnel_connection_request, self(), Username},
             receive
                 no_socket_waiting ->
-                    reporter:incoming_sip_call_without_adhearsion_leg(Username);
+                    reporter:incoming_sip_call_without_adhearsion_leg(Username),
+                    gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"FAILED\"\n"),
+                    gen_tcp:close(FromAsterisk);
                 {found, AdhearsionPid} ->
                     gen_tcp:controlling_process(FromAsterisk, AdhearsionPid),
                     AdhearsionPid ! {bridge_request, FromAsterisk, Headers},
                     io:format("Handing control of Asterisk socket for ~s to ~w ~n", [Username, AdhearsionPid])
             end;
         Error ->
-            reporter:asterisk_agi_initialization_error(Error)
+            reporter:asterisk_agi_initialization_error(Error),
+            gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"FAILED\"\n"),
+            gen_tcp:close(FromAsterisk)
     end.
 
 handle_adhearsion_connection(FromAdhearsion) ->
@@ -102,10 +106,11 @@ handle_adhearsion_connection(FromAdhearsion) ->
 
 % Yay! A connection has been made. Let's now start forwarding packets back and forth.
 start_tunnel_session(Username, FromAdhearsion, FromAsterisk, Headers) ->
-    ok = inet:setopts(FromAdhearsion, [{active, true}]),
-    ok = inet:setopts(FromAsterisk, [{active, true}]),
+    ok = inet:setopts(FromAdhearsion, [{active, true}, {nodelay, true}]),
+    ok = inet:setopts(FromAsterisk, [{active, true}, {nodelay, true}]),
     
     gen_tcp:send(FromAdhearsion, "authentication accepted\n"),
+    gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"SUCCESS\"\n"),
     
     % Because the Asterisk PID had to read the headers to properly service itself, we'll write them back (in reverse order)
     lists:foreach(fun(Header) ->

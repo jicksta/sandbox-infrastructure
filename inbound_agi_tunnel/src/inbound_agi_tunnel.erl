@@ -1,6 +1,6 @@
 -module(inbound_agi_tunnel).
 -export([start/0]).
--compile(export_all).
+% -compile(export_all).
 
 start() ->
 	io:format("Starting server~n"),

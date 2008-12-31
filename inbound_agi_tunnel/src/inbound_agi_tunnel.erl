@@ -7,8 +7,8 @@ start() ->
 	register(process_dictionary, spawn_link(fun process_dictionary/0)),
 	{ok, AdhearsionServerSocket} = gen_tcp:listen(20000, [list, {packet, line}, {active, false}]),
 	{ok, AsteriskServerSocket}   = gen_tcp:listen(4574,  [list, {packet, line}, {active, false}]),
-	spawn_link(fun() -> receive_adhearsion_connection_loop(AdhearsionServerSocket) end, []),
-    spawn_link(fun() -> receive_asterisk_connection_loop(AsteriskServerSocket) end, []),
+	spawn_link(fun() -> receive_adhearsion_connection_loop(AdhearsionServerSocket) end),
+    spawn_link(fun() -> receive_asterisk_connection_loop(AsteriskServerSocket) end),
     receive
         stop ->
             gen_tcp:close(AdhearsionServerSocket),
@@ -17,7 +17,7 @@ start() ->
 
 receive_asterisk_connection_loop(ServerSocket) ->
     {ok, FromAsterisk} = gen_tcp:accept(ServerSocket),
-    io:format("Received a connection from Asterisk: ~w~n", FromAsterisk),
+    io:format("Received a connection from Asterisk: ~w~n", [FromAsterisk]),
     % TODO: Change spawn_link to spawn
     ConnectionHandler = spawn_link(fun() -> handle_asterisk_connection(FromAsterisk) end),
     gen_tcp:controlling_process(FromAsterisk, ConnectionHandler),
@@ -26,7 +26,7 @@ receive_asterisk_connection_loop(ServerSocket) ->
 
 receive_adhearsion_connection_loop(ServerSocket) ->
 	{ok, FromAdhearsion} = gen_tcp:accept(ServerSocket),
-	io:format("Received a connection from Adhearsion: ~w~n", FromAdhearsion),
+	io:format("Received a connection from Adhearsion: ~w~n", [FromAdhearsion]),
 	% TODO: Change spawn_link to spawn
 	ConnectionHandler = spawn_link(fun() -> handle_adhearsion_connection(FromAdhearsion) end),
 	gen_tcp:controlling_process(FromAdhearsion, ConnectionHandler),
@@ -55,7 +55,7 @@ handle_adhearsion_connection(FromAdhearsion) ->
     receive
         start ->
             % Receive just the authentication string
-            inet:setopts(FromAdhearsion, {active, once}),
+            ok = inet:setopts(FromAdhearsion, {active, once}),
             handle_adhearsion_connection(FromAdhearsion);
         {tcp, FromAdhearsion, InitialData} ->
             case(check_authentication(InitialData)) of
@@ -75,8 +75,8 @@ handle_adhearsion_connection(FromAdhearsion) ->
 
 % Yay! A connection has been made. Let's now start forwarding packets back and forth.
 start_tunnel_session(Username, FromAdhearsion, FromAsterisk, Headers) ->
-    inet:setopts(FromAdhearsion, {active, true}),
-    inet:setopts(FromAsterisk, {active, true}),
+    ok = inet:setopts(FromAdhearsion, {active, true}),
+    ok = inet:setopts(FromAsterisk, {active, true}),
     
     % Because the Asterisk PID had to read the headers to properly service itself, we'll write them back (in reverse order)
     lists:foreach(fun(Header) ->
@@ -158,7 +158,7 @@ tunnel_loop(Username, FromAdhearsion, FromAsterisk) ->
 %     receive
 %         stop  -> Parent ! stopped;
 %         start ->
-%             inet:setopts(Socket, {active, true}),
+%             ok = inet:setopts(Socket, {active, true}),
 %             line_reading_loop(Parent, Socket);
 %         {tcp, Socket, Line} ->
 %             Parent ! {Socket, data, Line},
@@ -194,7 +194,7 @@ check_authentication(TextualData)  ->
 
 extract_username_and_headers_via_agi(FromAsterisk) -> extract_username_and_headers_via_agi(FromAsterisk, []).
 extract_username_and_headers_via_agi(FromAsterisk, Headers) ->
-    inet:setopts(FromAsterisk, {active, once}),
+    ok = inet:setopts(FromAsterisk, {active, once}),
     receive
         {tcp, FromAsterisk, "\n"} ->
             % This is the blank line which ends the headers' section of the AGI protocol.

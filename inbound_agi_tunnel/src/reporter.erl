@@ -20,7 +20,7 @@ connection_requested_for_nonexistent_hash() ->
     puts("connection_requested_for_nonexistent_hash").
     
 asterisk_agi_initialization_error(Error) ->
-    puts("asterisk_agi_initialization_error ~w", Error).
+    puts("asterisk_agi_initialization_error ~w", [Error]).
     
 starting_tunnel_loop_with_headers(Headers) ->
     puts("starting_tunnel_loop_with_headers ~w", [Headers]).

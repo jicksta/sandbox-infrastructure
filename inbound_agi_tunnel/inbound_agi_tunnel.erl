@@ -1,34 +1,76 @@
 -module(inbound_agi_tunnel).
--export([start/0]).
--compile(export_all).
+-export([start/0, start/2, report/1, report/2]).
+-record(config, {adhearsion_listen_on="0.0.0.0",
+                 adhearsion_port=20000,
+                 asterisk_listen_on="127.0.0.1",
+                 asterisk_port=4574,
+                 default_adhearsion_wait_time=10,
+                 log_file="inbound_agi_tunnel.log"}).
 
 start() ->
-	io:format("Starting server~n"),
+    start(config, #config{}).
+
+start(config_file, ConfigFile) ->
+    start(config, record_from_config_file(file:consult(ConfigFile)));
+
+start(config, Config) ->
+    ReporterPid = start_reporter(Config#config.log_file),
+    link(ReporterPid),
+    register(reporter, ReporterPid),
+    
+    report("Starting server"),
 	register(process_dictionary, spawn_link(fun process_dictionary/0)),
-	{ok, AdhearsionServerSocket} = gen_tcp:listen(20000, [list, {packet, line}, {active, false}]),
-	{ok, AsteriskServerSocket}   = gen_tcp:listen(4574,  [list, {packet, line}, {active, false}]),
-	io:format("Listening on ports~n"),
+	
+	{ok, AdhearsionServerSocket} = gen_tcp:listen(Config#config.adhearsion_port,
+	    [list, {packet, line}, {active, false}, {ip, Config#config.adhearsion_listen_on}]),
+	{ok, AsteriskServerSocket}   = gen_tcp:listen(Config#config.asterisk_port,
+	    [list, {packet, line}, {active, false},{ip, Config#config.asterisk_listen_on}]),
+	
+	report("Listening on ports~n"),
+	
 	Adhearsion = spawn_link(fun() -> receive_adhearsion_connection_loop(AdhearsionServerSocket) end),
     Asterisk   = spawn_link(fun() -> receive_asterisk_connection_loop(AsteriskServerSocket) end),
     
     receive
         stop ->
-            io:format("Received stop request~n"),
+            report("Received stop request~n"),
+            ReporterPid ! stop,
             gen_tcp:close(AdhearsionServerSocket),
             gen_tcp:close(AsteriskServerSocket);
         {'EXIT', Adhearsion, Why} ->
-            io:format("Adhearsion connection loop error! ~s~n", [Why]);
+            report("Adhearsion connection loop error! ~s~n", [Why]);
         {'EXIT', Asterisk, Why} ->
-            io:format("Asterisk connection loop error! ~s~n", [Why]);
+            report("Asterisk connection loop error! ~s~n", [Why]);
         {'EXIT', Other, Why} ->
-            io:format("PROCESS CRASH: [~w] ~s~n", [Other, Why])
+            report("PROCESS CRASH: [~p] ~s~n", [Other, Why])
     end,
     gen_tcp:close(AdhearsionServerSocket),
     gen_tcp:close(AsteriskServerSocket).
 
+record_from_config_file(Tuples) ->
+    lists:foldl(fun(Record, ConfigParameter) ->
+        case(ConfigParameter) of
+            {adhearsion_listen_on, IPAddress} ->
+                Record#config{adhearsion_listen_on=IPAddress};
+            {adhearsion_port, Port} ->
+                Record#config{adhearsion_port=Port};
+            {asterisk_listen_on, IPAddress} ->
+                Record#config{asterisk_listen_on=IPAddress};
+            {asterisk_port, Port} ->
+                Record#config{asterisk_port=Port};
+            {log_file, LogFile} ->
+                Record#config{log_file=LogFile};
+            {default_adhearsion_wait_time, Seconds} ->
+                Record#config{default_adhearsion_wait_time=Seconds};
+            Other ->
+                report("Ignoring unrecognized configuration option: ~p~n", [Other]),
+                Record
+        end
+    end, #config{}, Tuples).
+
 receive_asterisk_connection_loop(ServerSocket) ->
     {ok, FromAsterisk} = gen_tcp:accept(ServerSocket),
-    io:format("Received a connection from Asterisk: ~w~n", [FromAsterisk]),
+    report("Received a connection from Asterisk: ~p~n", [FromAsterisk]),
     % TODO: Change spawn_link to spawn
     ConnectionHandler = spawn_link(fun() -> handle_asterisk_connection(FromAsterisk) end),
     gen_tcp:controlling_process(FromAsterisk, ConnectionHandler),
@@ -37,7 +79,7 @@ receive_asterisk_connection_loop(ServerSocket) ->
 
 receive_adhearsion_connection_loop(ServerSocket) ->
 	{ok, FromAdhearsion} = gen_tcp:accept(ServerSocket),
-	io:format("Received a connection from Adhearsion: ~w~n", [FromAdhearsion]),
+	report("Received a connection from Adhearsion: ~p~n", [FromAdhearsion]),
 	% TODO: Change spawn_link to spawn
 	ConnectionHandler = spawn_link(fun() -> handle_adhearsion_connection(FromAdhearsion) end),
 	gen_tcp:controlling_process(FromAdhearsion, ConnectionHandler),
@@ -52,47 +94,47 @@ handle_asterisk_connection(FromAsterisk) ->
             ProcessDictionary ! {tunnel_connection_request, self(), Username},
             receive
                 no_socket_waiting ->
-                    reporter:incoming_sip_call_without_adhearsion_leg(Username),
+                    report(incoming_sip_call_without_adhearsion_leg, Username),
                     gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"FAILED\""),
                     gen_tcp:close(FromAsterisk);
                 {found, AdhearsionPid} ->
                     gen_tcp:controlling_process(FromAsterisk, AdhearsionPid),
                     AdhearsionPid ! {bridge_request, FromAsterisk, Headers},
-                    io:format("Handing control of Asterisk socket for ~s to ~w ~n", [Username, AdhearsionPid])
+                    report("Handing control of Asterisk socket for ~s to ~p ~n", [Username, AdhearsionPid])
             end;
         Error ->
-            reporter:asterisk_agi_initialization_error(Error),
+            report(asterisk_agi_initialization_error, Error),
             gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"FAILED\""),
             gen_tcp:close(FromAsterisk)
     end.
 
 handle_adhearsion_connection(FromAdhearsion) ->
-    io:format("handle_adhearsion_connection~n"),
+    report("handle_adhearsion_connection~n"),
     receive
         start ->
             % Receive just the authentication string
             ok = inet:setopts(FromAdhearsion, [{active, once}]),
-            io:format("Handling an Adhearsion connection. Expecting initial data next~n"),
+            report("Handling an Adhearsion connection. Expecting initial data next~n"),
             handle_adhearsion_connection(FromAdhearsion);
         {tcp, _Socket, InitialData} ->
-            io:format("Got initial data: '~s'~n", [InitialData]),
+            report("Got initial data: '~s'~n", [InitialData]),
             case(check_authentication(InitialData)) of
         	    not_allowed ->
-        	        reporter:new_connection_denied(),
+        	        report(new_connection_denied),
         	        gen_tcp:send(FromAdhearsion, "authentication failed\n"),
                     gen_tcp:close(FromAdhearsion);
         	    not_found ->
-        	        reporter:connection_requested_for_nonexistent_hash(),
+        	        report(connection_requested_for_nonexistent_hash),
         	        gen_tcp:send(FromAdhearsion, "authentication failed\n"),
                     gen_tcp:close(FromAdhearsion);
         		{ok, Username} ->
-        		    io:format("Adhearsion request from ~s~n", [Username]),
+        		    report("Adhearsion request from ~s~n", [Username]),
         		    case(wait_for_agi_leg(Username)) of
         		        timeout ->
-        		            reporter:adhearsion_connection_timed_out(Username),
+        		            report(adhearsion_connection_timed_out, Username),
                             gen_tcp:close(FromAdhearsion);
                         too_many_waiting ->
-                            reporter:duplicate_adhearsion_connection(),
+                            report(duplicate_adhearsion_connection),
                             gen_tcp:send(FromAdhearsion, "wait 10\n"),
                             gen_tcp:close(FromAdhearsion);
         		        {bridge_legs, FromAsterisk, Headers} ->
@@ -100,7 +142,7 @@ handle_adhearsion_connection(FromAdhearsion) ->
         	        end
         	end;
         Error ->
-            io:format("Got a gen_tcp error! ~w~n", [Error]),
+            report("Got a gen_tcp error! ~p~n", [Error]),
             {error, Error}
     end.
 
@@ -118,7 +160,7 @@ start_tunnel_session(Username, FromAdhearsion, FromAsterisk, Headers) ->
     end, Headers),
     gen_tcp:send(FromAdhearsion, "\n"),
 
-    reporter:starting_tunnel_loop_with_headers(Headers),
+    report(starting_tunnel_loop_with_headers, Headers),
     
     tunnel_loop(Username, FromAdhearsion, FromAsterisk).
     
@@ -131,13 +173,13 @@ tunnel_loop(Username, FromAdhearsion, FromAsterisk) ->
             gen_tcp:send(FromAdhearsion, Line),
             tunnel_loop(Username, FromAdhearsion, FromAsterisk);
         {tcp_closed, FromAsterisk} ->
-            reporter:session_gracefully_stopped(Username),
+            report(session_gracefully_stopped, Username),
             gen_tcp:close(FromAdhearsion);
         {tcp_closed, FromAdhearsion} ->
-            reporter:session_gracefully_stopped(Username),
+            report(session_gracefully_stopped, Username),
             gen_tcp:close(FromAsterisk);
         Error ->
-            io:format("There was an error on one of the legs: ~w~n", [Error]),
+            report("There was an error on one of the legs: ~p~n", [Error]),
             gen_tcp:close(FromAdhearsion),
             gen_tcp:close(FromAsterisk)
     end.
@@ -181,13 +223,13 @@ extract_username_and_headers_via_agi(FromAsterisk, Headers) ->
             receive
                 {tcp, FromAsterisk, UsernameWithNewline} ->
                     Username = chomp(UsernameWithNewline),
-                    io:format("Got an incoming Asterisk AGI call for username '~s'~n", [Username]),
+                    report("Got an incoming Asterisk AGI call for username '~s'~n", [Username]),
                     {username, Username, headers, Headers};
                 Error ->
-                    io:format("Received unrecognized data when requesting SANDBOX_USERNAME: ~w~n", [Error])
+                    report("Received unrecognized data when requesting SANDBOX_USERNAME: ~p~n", [Error])
             end;
         {tcp, FromAsterisk, HeaderLine} ->
-            io:format("Asterisk header: ~s~n", [HeaderLine]),
+            report("Asterisk header: ~s~n", [HeaderLine]),
             extract_username_and_headers_via_agi(FromAsterisk, [HeaderLine|Headers]);
         _Error -> error
     end.
@@ -231,4 +273,32 @@ chomp(String) ->
     case(LastCharacter =:= 10) of
         true -> lists:sublist(String, length(String) - 1);
         false -> String
+    end.
+
+report(String) when is_list(String) ->
+    whereis(reporter) ! String.
+
+report(String, FormatArgs) when is_list(String) and is_list(FormatArgs) ->
+    whereis(reporter) ! io_lib:format(String, FormatArgs).
+
+start_reporter(LogFilePath) ->
+    case(file:open(LogFilePath, [append])) of
+        {ok, LogFile} ->
+            spawn(fun() -> reporter_loop(LogFile) end);
+        Error ->
+            io:format("Could not open the log file \"~s\". Got error ~p~n", [LogFilePath, Error]),
+            erlang:error(Error)
+    end.
+
+reporter_loop(LogFile) ->
+    receive
+        stop ->
+            Message = "Reporter PID stopping",
+            io:format(LogFile, Message),
+            io:format(Message),
+            file:close(LogFile);
+        String when is_list(String) ->
+            io:format(LogFile, String),
+            io:format(String),
+            reporter_loop(LogFile)
     end.

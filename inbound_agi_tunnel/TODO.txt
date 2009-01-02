@@ -1,2 +1,1 @@
 - Must be stoppable (graceful exit)
-- Asterisk PID and Asterisk socket not distinguished

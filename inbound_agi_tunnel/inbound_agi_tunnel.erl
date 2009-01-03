@@ -275,10 +275,10 @@ username_for_md5(MD5) ->
         Username     -> {found, Username}
     end.
 
-% Turns "200 result=0 (jicksta)\n" into "jicksta" or bad_match atom if not in the correct format.
+% Turns "200 result=1 (jicksta)\n" into "jicksta" or bad_match atom if not in the correct format.
 extract_username_from_agi_variable_response(AGIResponse) ->
 	Text = chomp(AGIResponse),
-	Expected = "200 result=0 (",
+	Expected = "200 result=1 (",
 	[LastCharacter|_] = lists:reverse(Text),
 	case(lists:sublist(Text, length(Expected)) == Expected) of
 		true ->

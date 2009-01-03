@@ -1,5 +1,5 @@
 -module(inbound_agi_tunnel).
--export([start/0, start/2, report/1, report/2]).
+-export([start/0, start/2]).
 -record(config, {adhearsion_listen_on="0.0.0.0",
                  adhearsion_port=20000,
                  asterisk_listen_on="127.0.0.1",
@@ -97,7 +97,7 @@ handle_asterisk_connection(FromAsterisk) ->
             ProcessDictionary ! {tunnel_connection_request, self(), Username},
             receive
                 no_socket_waiting ->
-                    report("Asterisk AGI call came in but no matching remote Adhearsion app for user ~p", Username),
+                    report("Asterisk AGI call came in but no matching remote Adhearsion app for user ~p", [Username]),
                     gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"FAILED\""),
                     gen_tcp:close(FromAsterisk);
                 {found, AdhearsionPid} ->
@@ -106,7 +106,7 @@ handle_asterisk_connection(FromAsterisk) ->
                     report("Handing control of Asterisk socket for ~s to ~p ", [Username, AdhearsionPid])
             end;
         Error ->
-            report("Encountered an error when handling the AGI request from Asterisk: ~p", Error),
+            report("Encountered an error when handling the AGI request from Asterisk: ~p", [Error]),
             gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"FAILED\""),
             gen_tcp:close(FromAsterisk)
     end.
@@ -134,7 +134,7 @@ handle_adhearsion_connection(FromAdhearsion) ->
         		    report("Adhearsion request from ~s", [Username]),
         		    case(wait_for_agi_leg(Username)) of
         		        timeout ->
-        		            report("Killing sandbox socket for user ~p due to timeout", Username),
+        		            report("Killing sandbox socket for user ~p due to timeout", [Username]),
                             gen_tcp:close(FromAdhearsion);
                         too_many_waiting ->
                             report("Not allowing new sandbox connection because too many sockets are waiting"),

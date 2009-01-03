@@ -41,11 +41,11 @@ start(config, Config) ->
             gen_tcp:close(AdhearsionServerSocket),
             gen_tcp:close(AsteriskServerSocket);
         {'EXIT', Adhearsion, Why} ->
-            report("Adhearsion connection loop error! ~s", [Why]);
+            report("Adhearsion connection loop error! ~p", [Why]);
         {'EXIT', Asterisk, Why} ->
-            report("Asterisk connection loop error! ~s", [Why]);
+            report("Asterisk connection loop error! ~p", [Why]);
         {'EXIT', Other, Why} ->
-            report("PROCESS CRASH: [~w] ~s", [Other, Why])
+            report("PROCESS CRASH: [~p] ~p", [Other, Why])
     end,
     gen_tcp:close(AdhearsionServerSocket),
     gen_tcp:close(AsteriskServerSocket).
@@ -97,7 +97,7 @@ handle_asterisk_connection(FromAsterisk) ->
             ProcessDictionary ! {tunnel_connection_request, self(), Username},
             receive
                 no_socket_waiting ->
-                    report(incoming_sip_call_without_adhearsion_leg, Username),
+                    report("Asterisk AGI call came in but no matching remote Adhearsion app for user ~p", Username),
                     gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"FAILED\""),
                     gen_tcp:close(FromAsterisk);
                 {found, AdhearsionPid} ->
@@ -106,7 +106,7 @@ handle_asterisk_connection(FromAsterisk) ->
                     report("Handing control of Asterisk socket for ~s to ~p ", [Username, AdhearsionPid])
             end;
         Error ->
-            report(asterisk_agi_initialization_error, Error),
+            report("Encountered an error when handling the AGI request from Asterisk: ~p", Error),
             gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"FAILED\""),
             gen_tcp:close(FromAsterisk)
     end.
@@ -120,24 +120,24 @@ handle_adhearsion_connection(FromAdhearsion) ->
             report("Handling an Adhearsion connection. Expecting initial data next"),
             handle_adhearsion_connection(FromAdhearsion);
         {tcp, _Socket, InitialData} ->
-            report("Got initial data: '~s'", [InitialData]),
+            report("Got initial data: ~p", [InitialData]),
             case(check_authentication(InitialData)) of
         	    not_allowed ->
-        	        report(new_connection_denied),
+        	        report("Received an Adhearsion sandbox connection but is not allowed to connect!"),
         	        gen_tcp:send(FromAdhearsion, "authentication failed\n"),
                     gen_tcp:close(FromAdhearsion);
         	    not_found ->
-        	        report(connection_requested_for_nonexistent_hash),
+        	        report("Received an Adhearsion sandbox connection but is not allowed to connect!"),
         	        gen_tcp:send(FromAdhearsion, "authentication failed\n"),
                     gen_tcp:close(FromAdhearsion);
         		{ok, Username} ->
         		    report("Adhearsion request from ~s", [Username]),
         		    case(wait_for_agi_leg(Username)) of
         		        timeout ->
-        		            report(adhearsion_connection_timed_out, Username),
+        		            report("Killing sandbox socket for user ~p due to timeout", Username),
                             gen_tcp:close(FromAdhearsion);
                         too_many_waiting ->
-                            report(duplicate_adhearsion_connection),
+                            report("Not allowing new sandbox connection because too many sockets are waiting"),
                             gen_tcp:send(FromAdhearsion, "wait 10\n"),
                             gen_tcp:close(FromAdhearsion);
         		        {bridge_legs, FromAsterisk, Headers} ->
@@ -163,7 +163,7 @@ start_tunnel_session(Username, FromAdhearsion, FromAsterisk, Headers) ->
     end, Headers),
     gen_tcp:send(FromAdhearsion, "\n"),
 
-    report(starting_tunnel_loop_with_headers, Headers),
+    report("Starting tunnel loop with headers ~p", [Headers]),
     
     tunnel_loop(Username, FromAdhearsion, FromAsterisk).
     
@@ -176,10 +176,10 @@ tunnel_loop(Username, FromAdhearsion, FromAsterisk) ->
             gen_tcp:send(FromAdhearsion, Line),
             tunnel_loop(Username, FromAdhearsion, FromAsterisk);
         {tcp_closed, FromAsterisk} ->
-            report(session_gracefully_stopped, Username),
+            report("Session for ~p stopped gracefully", [Username]),
             gen_tcp:close(FromAdhearsion);
         {tcp_closed, FromAdhearsion} ->
-            report(session_gracefully_stopped, Username),
+            report("Session for ~p stopped gracefully", [Username]),
             gen_tcp:close(FromAsterisk);
         Error ->
             report("There was an error on one of the legs: ~p", [Error]),
@@ -236,7 +236,7 @@ extract_username_and_headers_via_agi(FromAsterisk, Headers) ->
 					error
             end;
         {tcp, FromAsterisk, HeaderLine} ->
-            report("Asterisk header: ~s", [HeaderLine]),
+            report("Asterisk header: ~s", [chomp(HeaderLine)]),
             extract_username_and_headers_via_agi(FromAsterisk, [HeaderLine|Headers]);
         _Error -> error
     end.

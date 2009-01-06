@@ -1,6 +1,5 @@
 sandbox {
-  username = channel[%r[^SIP/([^-]+)-.+$],1]
-  if username && SandboxUser.find_by_username(username)
+  if SandboxUser.find_by_username(extension)
     variable "SANDBOX_USERNAME" => extension
   else
     +unrecognized_username

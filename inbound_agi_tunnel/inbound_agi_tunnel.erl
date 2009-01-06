@@ -165,6 +165,9 @@ handle_adhearsion_connection(FromAdhearsion) ->
 
 % Yay! A connection has been made. Let's now start forwarding packets back and forth.
 start_tunnel_session(Username, FromAdhearsion, FromAsterisk, Headers) ->
+    
+    whereis(process_dictionary) ! {tunnel_completed, Username},
+    
     ok = inet:setopts(FromAdhearsion, [{active, true}, {nodelay, true}]),
     ok = inet:setopts(FromAsterisk, [{active, true}, {nodelay, true}]),
     
@@ -211,7 +214,7 @@ wait_for_agi_leg(Username) ->
             too_many_waiting
         after ?ADHEARSION_SOCKET_WAIT_TIME_IN_MINUTES * 60 * 1000 ->
             % Timeout after a pre-defined number of minutes
-            ProcessDictionaryPid ! {tunnel_closed, Username},
+            ProcessDictionaryPid ! {tunnel_completed, Username},
             timeout
     end.
 
@@ -269,7 +272,7 @@ process_dictionary(Dictionary) ->
                 true  -> AdhearsionPid ! too_many_waiting;
                 false -> process_dictionary(dict:store(Username, AdhearsionPid, Dictionary))
             end;
-        {tunnel_closed, Username} ->
+        {tunnel_completed, Username} ->
             process_dictionary(dict:erase(Username, Dictionary));
         {tunnel_connection_request, AsteriskPid, Username} ->
             % Find the Adhearsion Pid which should be waiting to be connected. If found, return Pid. If not, return an error.

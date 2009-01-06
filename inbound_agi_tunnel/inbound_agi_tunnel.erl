@@ -56,9 +56,7 @@ start(config, Config) ->
     gen_tcp:close(AsteriskServerSocket).
 
 record_from_config_file(Tuples) ->
-    io:format("~p~n", [Tuples]),
     lists:foldl(fun(ConfigParameter, Record) ->
-        io:format("~n~n~p~n", [ConfigParameter]),
         case(ConfigParameter) of
             {adhearsion_listen_on, IPAddress} ->
                 Record#config{adhearsion_listen_on=IPAddress};

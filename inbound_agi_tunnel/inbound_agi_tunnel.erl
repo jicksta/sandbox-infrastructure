@@ -1,5 +1,6 @@
 -module(inbound_agi_tunnel).
 -export([start/0, start/1, start/2]).
+-define(ADHEARSION_SOCKET_WAIT_TIME_IN_MINUTES, 10).
 -record(config, {adhearsion_listen_on="0.0.0.0",
                  adhearsion_port=20000,
                  asterisk_listen_on="127.0.0.1",
@@ -201,8 +202,8 @@ wait_for_agi_leg(Username) ->
             {bridge_legs, FromAsterisk, Buffer};
         too_many_waiting ->
             too_many_waiting
-        after 300 * 1000 ->
-            % Timeout after 5 minutes
+        after ADHEARSION_SOCKET_WAIT_TIME_IN_MINUTES * 60 * 1000 ->
+            % Timeout after a pre-defined number of minutes
             ProcessDictionaryPid ! {tunnel_closed, Username},
             timeout
     end.

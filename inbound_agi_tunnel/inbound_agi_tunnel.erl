@@ -1,5 +1,5 @@
 -module(inbound_agi_tunnel).
--export([start/0, start/2]).
+-export([start/0, start/1, start/2]).
 -record(config, {adhearsion_listen_on="0.0.0.0",
                  adhearsion_port=20000,
                  asterisk_listen_on="127.0.0.1",
@@ -10,8 +10,12 @@
 start() ->
     start(config, #config{}).
 
+start([ConfigFile]) ->
+    start(config_file, ConfigFile).
+
 start(config_file, ConfigFile) ->
-    start(config, record_from_config_file(file:consult(ConfigFile)));
+    {ok, ConfigDataStructure} = file:consult(ConfigFile),
+    start(config, record_from_config_file(ConfigDataStructure));
 
 start(config, Config) ->
     ReporterPid = start_reporter(Config#config.log_file),
@@ -51,7 +55,9 @@ start(config, Config) ->
     gen_tcp:close(AsteriskServerSocket).
 
 record_from_config_file(Tuples) ->
-    lists:foldl(fun(Record, ConfigParameter) ->
+    io:format("~p~n", [Tuples]),
+    lists:foldl(fun(ConfigParameter, Record) ->
+        io:format("~n~n~p~n", [ConfigParameter]),
         case(ConfigParameter) of
             {adhearsion_listen_on, IPAddress} ->
                 Record#config{adhearsion_listen_on=IPAddress};

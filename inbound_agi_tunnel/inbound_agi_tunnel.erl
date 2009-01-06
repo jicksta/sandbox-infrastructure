@@ -202,7 +202,7 @@ wait_for_agi_leg(Username) ->
             {bridge_legs, FromAsterisk, Buffer};
         too_many_waiting ->
             too_many_waiting
-        after ADHEARSION_SOCKET_WAIT_TIME_IN_MINUTES * 60 * 1000 ->
+        after ?ADHEARSION_SOCKET_WAIT_TIME_IN_MINUTES * 60 * 1000 ->
             % Timeout after a pre-defined number of minutes
             ProcessDictionaryPid ! {tunnel_closed, Username},
             timeout

@@ -79,28 +79,28 @@ record_from_config_file(Tuples) ->
 receive_asterisk_connection_loop(ServerSocket) ->
     case(gen_tcp:accept(ServerSocket)) of
         {ok, FromAsterisk} ->
-            report("Received a connection from Asterisk: ~p", [FromAsterisk]),
+            % report("Received a connection from Asterisk: ~p", [FromAsterisk]),
             % TODO: Change spawn_link to spawn
             ConnectionHandler = spawn_link(fun() -> handle_asterisk_connection(FromAsterisk) end),
             gen_tcp:controlling_process(FromAsterisk, ConnectionHandler),
             ConnectionHandler ! start,
             receive_asterisk_connection_loop(ServerSocket);
         {error, Error} ->
-            report("Error in gen_tcp:accept/1 when getting an Asterisk socket: ~p", [Error]),
+            % report("Error in gen_tcp:accept/1 when getting an Asterisk socket: ~p", [Error]),
             receive_asterisk_connection_loop(ServerSocket)
     end.
 
 receive_adhearsion_connection_loop(ServerSocket) ->
 	case(gen_tcp:accept(ServerSocket)) of
 	    {ok, FromAdhearsion} ->
-	        report("Received a connection from Adhearsion: ~p", [FromAdhearsion]),
+            % report("Received a connection from Adhearsion: ~p", [FromAdhearsion]),
         	% TODO: Change spawn_link to spawn
         	ConnectionHandler = spawn_link(fun() -> handle_adhearsion_connection(FromAdhearsion) end),
         	gen_tcp:controlling_process(FromAdhearsion, ConnectionHandler),
         	ConnectionHandler ! start,
         	receive_adhearsion_connection_loop(ServerSocket);
         {error, Error} ->
-            report("Error in gen_tcp:accept/1 when getting an Adhearsion socket: ~p", [Error]),
+            % report("Error in gen_tcp:accept/1 when getting an Adhearsion socket: ~p", [Error]),
             receive_adhearsion_connection_loop(ServerSocket)
     end.
 

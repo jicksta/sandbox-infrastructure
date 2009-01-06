@@ -168,11 +168,14 @@ start_tunnel_session(Username, FromAdhearsion, FromAsterisk, Headers) ->
     
     whereis(process_dictionary) ! {tunnel_completed, Username},
     
-    ok = inet:setopts(FromAdhearsion, [{active, true}, {nodelay, true}]),
-    ok = inet:setopts(FromAsterisk, [{active, true}, {nodelay, true}]),
-    
     gen_tcp:send(FromAdhearsion, "authentication accepted\n"),
     gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"SUCCESS\""),
+    
+    ok = inet:setopts(FromAsterisk, [{active, true}]),
+    receive {tcp, FromAsterisk, "200 result=1\n"} -> ok end,
+    
+    ok = inet:setopts(FromAdhearsion, [{active, true}]),
+    ok = inet:setopts(FromAsterisk, [{active, true}]),
     
     % Because the Asterisk PID had to read the headers to properly service itself, we'll write them back (in reverse order)
     lists:foreach(fun(Header) ->

@@ -1,6 +1,5 @@
 -module(inbound_agi_tunnel).
 -export([start/0, start/1, start/2]).
--define(ADHEARSION_SOCKET_WAIT_TIME_IN_MINUTES, 10).
 -record(config, {adhearsion_listen_on="0.0.0.0",
                  adhearsion_port=20000,
                  asterisk_listen_on="127.0.0.1",
@@ -31,6 +30,8 @@ start(config, Config) ->
             end
     end,
     
+    ConfigServer = spawn_link(fun() -> config_database(Config) end),
+    
     ReporterPid = start_reporter(Config#config.log_file),
     link(ReporterPid),
     register(reporter, ReporterPid),
@@ -53,10 +54,7 @@ start(config, Config) ->
     
     receive
         stop ->
-            report("Received stop request"),
-            ReporterPid ! stop,
-            gen_tcp:close(AdhearsionServerSocket),
-            gen_tcp:close(AsteriskServerSocket);
+            report("Received stop request");
         {'EXIT', Adhearsion, Why} ->
             report("Adhearsion connection loop error! ~p", [Why]);
         {'EXIT', Asterisk, Why} ->
@@ -64,6 +62,8 @@ start(config, Config) ->
         {'EXIT', Other, Why} ->
             report("PROCESS CRASH: [~p] ~p", [Other, Why])
     end,
+    ReporterPid  ! stop,
+    ConfigServer ! stop,
     gen_tcp:close(AdhearsionServerSocket),
     gen_tcp:close(AsteriskServerSocket).
 
@@ -226,12 +226,13 @@ tunnel_loop(Username, FromAdhearsion, FromAsterisk) ->
 wait_for_agi_leg(Username) ->
     ProcessDictionaryPid = whereis(process_dictionary),
     ProcessDictionaryPid ! {tunnel_waiting, self(), Username},
+    
     receive
         {bridge_request, FromAsterisk, Buffer} ->
             {bridge_legs, FromAsterisk, Buffer};
         too_many_waiting ->
             too_many_waiting
-        after ?ADHEARSION_SOCKET_WAIT_TIME_IN_MINUTES * 60 * 1000 ->
+        after config_get(default_adhearsion_wait_time) * 60 * 1000 ->
             % Timeout after a pre-defined number of minutes
             ProcessDictionaryPid ! {tunnel_completed, Username},
             timeout
@@ -349,6 +350,49 @@ start_reporter(LogFilePath) ->
             io:format("Could not open the log file \"~s\". Got error ~p", [LogFilePath, Error]),
             erlang:error(Error)
     end.
+
+% Erlang has no way of doing dynamic record access so we have to roll our own. See get_record_value/3 and slow_find/2
+config_database(Config) ->
+    receive
+        stop -> ok;
+        {Sender, Query} when is_atom(Query) ->
+            case(get_record_value(Query, Config, record_info(fields, config))) of
+                undefined -> Sender ! invalid;
+                Value     -> Sender ! Value
+            end,
+            config_database(Config);
+        Else ->
+            report("Got an invalid request for a configuration key! ~p", [Else]),
+            config_database(Config)
+    end.
+    
+
+% Erlang has no dynamic record access function!!! HOW IS THAT POSSIBLE???
+% I got function from http://progexpr.blogspot.com/2007/04/simple-dynamic-record-access.html.
+get_record_value(Key, Rec, RecordInfo) ->
+    case slow_find(Key, RecordInfo) of
+        not_found -> undefined;
+        Num       -> element(Num+1, Rec)
+    end.
+
+% I got function from http://progexpr.blogspot.com/2007/04/simple-dynamic-record-access.html. Used only by get_record_value/3
+slow_find(Item, List) ->
+    slow_find(Item, List, 1).
+
+% I got function from http://progexpr.blogspot.com/2007/04/simple-dynamic-record-access.html. Used only by get_record_value/3
+slow_find(_Item, [], _) -> not_found;
+
+% I got function from http://progexpr.blogspot.com/2007/04/simple-dynamic-record-access.html. Used only by get_record_value/3
+slow_find(Item, [H|T], Count) ->
+    case H of
+        Item -> Count;
+    _ ->
+        slow_find(Item, T, Count+1)
+end.
+
+config_get(key) ->
+    whereis(config) ! {self(), key},
+    receive X -> X end.        
 
 reporter_loop(LogFile) ->
     receive

@@ -11,11 +11,15 @@
 {asterisk_port, 4574}.
 
 % When a connection comes in from the Adhearsion sandbox component, how long should we hold onto it before closing it? Time
-% is in seconds. NOTE: NOT IMPLEMENTED YET. SEE THE -define PART inbound_agi_tunnel.erl TO SET THIS.
-% {default_adhearsion_wait_time, 300}.
+% is in minutes.
+{default_adhearsion_wait_time, 5}.
 
 % Which log file should we log to?
 {log_file, "/opt/sandbox-infrastructure/inbound_agi_tunnel/inbound_agi_tunnel.log"}.
 
 % This can be the 'false' atom if you want to just use the current directory
 {working_dir, "/"}.
+
+% This is the path to the script which authenticates the incoming calls.
+{working_dir, "/opt/sandbox-infrastructure/inbound_agi_tunnel"}.
+>>>>>>> 8e249b73b5af5d034ef322ed71eae3b57de23b6b:inbound_agi_tunnel/config.erl

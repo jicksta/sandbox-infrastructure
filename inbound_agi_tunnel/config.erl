@@ -20,6 +20,7 @@
 % This can be the 'false' atom if you want to just use the current directory
 {working_dir, "/"}.
 
-% This is the path to the script which authenticates the incoming calls.
-{working_dir, "/opt/sandbox-infrastructure/inbound_agi_tunnel"}.
->>>>>>> 8e249b73b5af5d034ef322ed71eae3b57de23b6b:inbound_agi_tunnel/config.erl
+% When a connection comes in from the Adhearsion sandbox component, it sends an MD5 generated from the user's username and
+% password. That MD5 is given as argument to the script and the script is expected to print to STDOUT one of two things:
+% "Not found!" or the username from the database.
+{authentication_script, "/opt/sandbox-infrastructure/inbound_agi_tunnel/username_from_md5"}

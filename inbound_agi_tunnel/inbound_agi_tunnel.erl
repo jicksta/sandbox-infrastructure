@@ -6,6 +6,7 @@
                  asterisk_port=4574,
                  default_adhearsion_wait_time=10,
                  working_dir=false,
+                 authentication_script="/opt/sandbox-infrastructure/inbound_agi_tunnel/username_from_md5",
                  log_file="inbound_agi_tunnel.log"}).
 
 start() ->
@@ -85,6 +86,8 @@ record_from_config_file(Tuples) ->
                 Record#config{working_dir=Dir};
             {default_adhearsion_wait_time, Seconds} ->
                 Record#config{default_adhearsion_wait_time=Seconds};
+            {authentication_script, Script} ->
+                Record#config{authentication_script=Script};
             Other ->
                 report("Ignoring unrecognized configuration option: ~p", [Other]),
                 Record
@@ -307,7 +310,8 @@ process_dictionary(Dictionary) ->
     end.
 
 username_for_md5(MD5) ->
-    SearchResult = os:cmd("./username_from_md5 " ++ MD5),
+    Script = config_get(authentication_script),
+    SearchResult = os:cmd(Script ++ " " ++ MD5),
     case(SearchResult) of
         "Not found!" -> not_found;
         Username     -> {found, Username}

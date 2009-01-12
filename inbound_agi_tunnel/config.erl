@@ -16,3 +16,6 @@
 
 % Which log file should we log to?
 {log_file, "inbound_agi_tunnel.log"}.
+
+% This can be the 'false' atom if you want to just use the current directory
+{working_dir, "/opt/sandbox-infrastructure/inbound_agi_tunnel"}.

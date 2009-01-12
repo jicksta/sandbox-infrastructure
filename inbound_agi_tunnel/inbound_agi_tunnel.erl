@@ -6,6 +6,7 @@
                  asterisk_listen_on="127.0.0.1",
                  asterisk_port=4574,
                  default_adhearsion_wait_time=10,
+                 working_dir=false,
                  log_file="inbound_agi_tunnel.log"}).
 
 start() ->
@@ -19,6 +20,17 @@ start(config_file, ConfigFile) ->
     start(config, record_from_config_file(ConfigDataStructure));
 
 start(config, Config) ->
+    case(Config#config.working_dir) of
+        false -> ok; % Don't change the working directory.
+        _     ->
+            case(file:set_cwd(Config#config.working_dir)) of
+                ok -> ok;
+                {error, Error} ->
+                    io:format("Could not the working dir to ~s: ~p~n", [Config#config.working_dir, Error]),
+                    erlang:exit(Error)
+            end
+    end,
+    
     ReporterPid = start_reporter(Config#config.log_file),
     link(ReporterPid),
     register(reporter, ReporterPid),
@@ -68,6 +80,8 @@ record_from_config_file(Tuples) ->
                 Record#config{asterisk_port=Port};
             {log_file, LogFile} ->
                 Record#config{log_file=LogFile};
+            {working_dir, Dir} ->
+                Record#config{working_dir=Dir};
             {default_adhearsion_wait_time, Seconds} ->
                 Record#config{default_adhearsion_wait_time=Seconds};
             Other ->
@@ -171,11 +185,11 @@ start_tunnel_session(Username, FromAdhearsion, FromAsterisk, Headers) ->
     gen_tcp:send(FromAdhearsion, "authentication accepted\n"),
     gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"SUCCESS\""),
     
-    ok = inet:setopts(FromAsterisk, [{active, true}]),
+    ok = inet:setopts(FromAsterisk, [{active, true}, {nodelay, true}]),
     receive {tcp, FromAsterisk, "200 result=1\n"} -> ok end,
     
-    ok = inet:setopts(FromAdhearsion, [{active, true}]),
-    ok = inet:setopts(FromAsterisk, [{active, true}]),
+    ok = inet:setopts(FromAdhearsion, [{active, true}, {nodelay, true}]),
+    ok = inet:setopts(FromAsterisk, [{active, true}, {nodelay, true}]),
     
     % Because the Asterisk PID had to read the headers to properly service itself, we'll write them back (in reverse order)
     lists:foreach(fun(Header) ->

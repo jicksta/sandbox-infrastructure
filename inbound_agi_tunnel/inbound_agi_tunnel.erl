@@ -395,8 +395,8 @@ slow_find(Item, [H|T], Count) ->
         slow_find(Item, T, Count+1)
 end.
 
-config_get(key) ->
-    whereis(config) ! {self(), key},
+config_get(Key) ->
+    whereis(config) ! {self(), Key},
     receive X -> X end.        
 
 reporter_loop(LogFile) ->

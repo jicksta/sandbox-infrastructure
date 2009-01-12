@@ -1,24 +1,19 @@
 #!/usr/bin/env ruby
 
-# Temporary mocking:
-print "jicksta"
-exit
-
-
-
-
 require 'rubygems'
-require 'active_support'
+require 'active_record'
 
 sought_md5 = ARGV.first
 
-settings = YAML.load_file "/path/to/rails/app/database.yml"
+PATH_TO_RAILS = "/var/www/adhearsion.com"
+
+settings = YAML.load_file PATH_TO_RAILS + "/config/database.yml"
 
 ActiveRecord::Base.establish_connection settings["production"]
 
-class SandboxUser < ActiveRecord::Base; end
+require PATH_TO_RAILS + "/app/models/sandbox_user"
 
-sandbox_user = SandboxUser.find_by_identifying_hash sought_md5
+sandbox_user = SandboxUser.find_by_identifier_hash sought_md5
 
 if sandbox_user
   print sandbox_user.username

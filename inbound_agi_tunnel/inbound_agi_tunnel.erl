@@ -31,6 +31,7 @@ start(config, Config) ->
     end,
     
     ConfigServer = spawn_link(fun() -> config_database(Config) end),
+    register(config, ConfigServer),
     
     ReporterPid = start_reporter(Config#config.log_file),
     link(ReporterPid),

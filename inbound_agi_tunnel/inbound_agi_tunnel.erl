@@ -64,6 +64,7 @@ start(config, Config) ->
         {'EXIT', Other, Why} ->
             report("PROCESS CRASH: [~p] ~p", [Other, Why])
     end,
+    report("Shutting down main loop!"),
     ReporterPid  ! stop,
     ConfigServer ! stop,
     gen_tcp:close(AdhearsionServerSocket),
@@ -352,8 +353,9 @@ report(String, FormatArgs) ->
         CompiledString ->
             whereis(reporter) ! CompiledString
     catch
-        error:_Error ->
-            whereis(reporter) ! "REPORTER ERROR! I HAVE NO IDEA WHY THIS HAPPENS"
+        error:_Error -> whereis(reporter) ! "REPORTER ERROR! I HAVE NO IDEA WHY THIS HAPPENS";
+        throw:_Error -> whereis(reporter) ! "REPORTER ERROR! I HAVE NO IDEA WHY THIS HAPPENS";
+        exit:_Error  -> whereis(reporter) ! "REPORTER ERROR! I HAVE NO IDEA WHY THIS HAPPENS"
     end.
 
 start_reporter(LogFilePath) ->

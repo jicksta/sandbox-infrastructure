@@ -1,6 +1,4 @@
 #!/usr/bin/env ruby
-print "Not found!"
-exit 1
 require 'rubygems'
 require 'active_record'
 

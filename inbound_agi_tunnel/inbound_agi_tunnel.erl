@@ -347,7 +347,13 @@ report(String) ->
     whereis(reporter) ! String.
 
 report(String, FormatArgs) ->
-    whereis(reporter) ! io_lib:format(String, FormatArgs).
+    try io_lib:format(String, FormatArgs) of
+        CompiledString ->
+            whereis(reporter) ! CompiledString
+    catch
+        error:_Error ->
+            whereis(reporter) ! "REPORTER ERROR! I HAVE NO IDEA WHY THIS HAPPENS"
+    end.
 
 start_reporter(LogFilePath) ->
     case(file:open(LogFilePath, [append])) of

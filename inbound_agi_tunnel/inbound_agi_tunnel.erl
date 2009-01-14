@@ -231,7 +231,7 @@ wait_for_agi_leg(Username) ->
     ProcessDictionaryPid = whereis(process_dictionary),
     ProcessDictionaryPid ! {tunnel_waiting, self(), Username},
     
-    TimeoutInMilliseconds = WaitTime * 60 * 1000,
+    TimeoutInMilliseconds = config_get(default_adhearsion_wait_time) * 60 * 1000,
     
     receive
         {bridge_request, FromAsterisk, Buffer} ->

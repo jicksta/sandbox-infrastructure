@@ -15,12 +15,13 @@
 {default_adhearsion_wait_time, 5}.
 
 % Which log file should we log to?
-{log_file, "/opt/sandbox-infrastructure/inbound_agi_tunnel/inbound_agi_tunnel.log"}.
+%{log_file, "/opt/sandbox-infrastructure/inbound_agi_tunnel/inbound_agi_tunnel.log"}.
+{log_file, "out.log"}.
 
 % This can be the 'false' atom if you want to just use the current directory
-{working_dir, "/"}.
+{working_dir, "/Users/jicksta/Desktop/sandbox-infrastructure/inbound_agi_tunnel"}.
 
 % When a connection comes in from the Adhearsion sandbox component, it sends an MD5 generated from the user's username and
 % password. That MD5 is given as argument to the script and the script is expected to print to STDOUT one of two things:
 % "Not found!" or the username from the database.
-{authentication_script, "/opt/sandbox-infrastructure/inbound_agi_tunnel/username_from_md5"}.
+{authentication_script, "./username_from_md5"}.

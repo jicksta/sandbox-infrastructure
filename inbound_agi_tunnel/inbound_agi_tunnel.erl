@@ -231,12 +231,14 @@ wait_for_agi_leg(Username) ->
     ProcessDictionaryPid = whereis(process_dictionary),
     ProcessDictionaryPid ! {tunnel_waiting, self(), Username},
     
+    TimeoutInMilliseconds = WaitTime * 60 * 1000,
+    
     receive
         {bridge_request, FromAsterisk, Buffer} ->
             {bridge_legs, FromAsterisk, Buffer};
         too_many_waiting ->
             too_many_waiting
-        after config_get(default_adhearsion_wait_time) * 60 * 1000 ->
+        after TimeoutInMilliseconds ->
             % Timeout after a pre-defined number of minutes
             ProcessDictionaryPid ! {tunnel_completed, Username},
             timeout
@@ -341,10 +343,10 @@ chomp(String) ->
         false -> String
     end.
 
-report(String) when is_list(String) ->
+report(String) ->
     whereis(reporter) ! String.
 
-report(String, FormatArgs) when is_list(String) and is_list(FormatArgs) ->
+report(String, FormatArgs) ->
     whereis(reporter) ! io_lib:format(String, FormatArgs).
 
 start_reporter(LogFilePath) ->
@@ -406,7 +408,7 @@ reporter_loop(LogFile) ->
             io:format(LogFile, Message, []),
             io:format(Message),
             file:close(LogFile);
-        String when is_list(String) ->
+        String ->
 			StringWithNewline = String ++ "~n",
             io:format(LogFile, StringWithNewline, []),
             io:format(StringWithNewline),

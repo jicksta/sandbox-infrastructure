@@ -13,7 +13,7 @@ start(config_file, ConfigFile) ->
     
     LogFilePath = dict:fetch(log_file, Config),
     io:format("Log file path is ~s~n", [LogFilePath]),
-    
+
     LogFile = case(file:open(LogFilePath, [append])) of
         {ok, OpenedFile} -> OpenedFile;
         Error ->

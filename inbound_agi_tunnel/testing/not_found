@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# This script is executed by inbound_agi_tunnel. It receives an MD5 in $1 but we'll always say the username is not found.
+echo "Not found!"

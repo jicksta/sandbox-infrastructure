@@ -6,21 +6,21 @@ This project is a way for Adhearsion applications, using the `sandbox` component
 Compiling and Running
 ---------------------
 
-Once you have Erlang installed, simply do `erlc inbound_agi_tunnel.erl`. This outputs an `inbound_agi_tunnel.beam` file.
+Once you have Erlang installed, simply do `erlc *.erl` in this directory.
 
-To run the file, `cd` into the directory with the compiled `.beam` file and type the following command:
+To run the tunnel, type the following command in this directory.
 
-    erl -noshell -s inbound_agi_tunnel start config.erl
+    erl -noshell -s inbound_agi_tunnel start testing/config.testing.erl
 
-Note, if you don't wish to start with the configuration file (and simply accept all defaults) you can do this:
+If you wish to run it as a daemon in production mode, you can do
 
-    erl -noshell -s inbound_agi_tunnel start
+    erl -detached -noshell -s inbound_agi_tunnel start production/config.production.erl
 
-The defaults are defined in the `config` record in `inbound_agi_tunnel.erl`.
+The `-detached` flag makes it run in the background.
 
 Custom Usernames
 ----------------
 
-Because this tunnel system has an authentication step, you'll probably need to re-implement the `username_from_md5` file for your own domain. For the Adhearsion sandbox, it `require`s the ActiveRecord models used to power the Adhearsion.com Rails app and authenticates using its backend database and ORM methods.
+Because this tunnel system has an authentication step, you'll probably need to re-implement the `production/username_from_md5` file for your own domain. For the Adhearsion sandbox, it `require`s the ActiveRecord models used to power the Adhearsion.com Rails app and authenticates using its backend database and ORM methods.
 
-The script can be implemented any way you like, even with a language other than Ruby, as long as it prints `"Not found!"` or the username from the database, **without** a trailing newline.
+The script can be implemented any way you like, even with a language other than Ruby, as long as it prints `"Not found!"` or the username from the database.

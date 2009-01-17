@@ -3,7 +3,7 @@
 -define(LOGGING_SPEC, ).
 
 start() ->
-    start(["development/config.development.erl"]).
+    start(["envs/development/config.development.erl"]).
 
 start([ConfigFile]) ->
     start(config_file, ConfigFile).

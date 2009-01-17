@@ -25,7 +25,7 @@
 % This is the Spec format for log4erl
 
 {log4erl_spec, { 
-  "logs",         % Log directory
+  "tmp",         % Log directory
   "development",  % Filename
   {size, 512000}, % Size of file
   4,              % Rotations

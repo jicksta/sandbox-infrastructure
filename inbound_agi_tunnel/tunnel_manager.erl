@@ -104,7 +104,7 @@ handle_adhearsion_connection(FromAdhearsion) ->
             ok = inet:setopts(FromAdhearsion, [{active, once}]),
             report("Handling an Adhearsion connection. Expecting initial data next"),
             handle_adhearsion_connection(FromAdhearsion);
-        {tcp, _Socket, InitialData} ->
+        {tcp, FromAdhearsion, InitialData} ->
             report("Got initial data: ~p", [InitialData]),
             case(check_authentication(InitialData)) of
         	    not_allowed ->
@@ -253,7 +253,7 @@ username_for_md5(MD5) ->
 extract_username_from_agi_variable_response(AGIResponse) ->
 	Text = util:chomp(AGIResponse),
 	Expected = "200 result=1 (",
-	[LastCharacter|_] = lists:reverse(Text),
+	LastCharacter = lists:last(Text),
 	case(lists:sublist(Text, length(Expected)) == Expected) of
 		true ->
 			case(LastCharacter =:= $)) of

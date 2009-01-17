@@ -1,1 +1,0 @@
-* Must be stoppable (graceful exit)

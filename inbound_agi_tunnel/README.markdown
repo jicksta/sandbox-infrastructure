@@ -10,7 +10,7 @@ Once you have Erlang installed, simply do `erlc *.erl` in this directory.
 
 To run the tunnel, type the following command in this directory.
 
-    erl -noshell -s inbound_agi_tunnel start testing/config.testing.erl
+    erl -noshell -s inbound_agi_tunnel start development/config.development.erl
 
 If you wish to run it as a daemon in production mode, you can do
 
@@ -24,3 +24,8 @@ Custom Usernames
 Because this tunnel system has an authentication step, you'll probably need to re-implement the `production/username_from_md5` file for your own domain. For the Adhearsion sandbox, it `require`s the ActiveRecord models used to power the Adhearsion.com Rails app and authenticates using its backend database and ORM methods.
 
 The script can be implemented any way you like, even with a language other than Ruby, as long as it prints `"Not found!"` or the username from the database.
+
+TODO
+----
+
+* The system can't exit gracefully yet

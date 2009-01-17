@@ -1,6 +1,7 @@
 all:    subdirs
 
 subdirs: 
+	mkdir ebin
 	cd log4erl; make
 	cd src; make
 

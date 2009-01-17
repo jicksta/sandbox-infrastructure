@@ -12,7 +12,6 @@ start(config_file, ConfigFile) ->
     Config = dict:from_list(ConfigDataStructure),
     
     LogFilePath = dict:fetch(log_file, Config),
-    io:format("Log file path is ~s~n", [LogFilePath]),
 
     LogFile = case(file:open(LogFilePath, [append])) of
         {ok, OpenedFile} -> OpenedFile;
@@ -20,7 +19,7 @@ start(config_file, ConfigFile) ->
             io:format("Could not open the log file \"~s\". Got error ~p", [LogFilePath, Error]),
             erlang:error(Error)
     end,
-    io:format("Opened log file~n"),
+
     ConnectionSemaphore = spawn_link(fun() -> connection_semaphore:start() end),
     
     TunnelManager = tunnel_manager:new(Config, LogFile, ConnectionSemaphore),

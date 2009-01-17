@@ -81,8 +81,7 @@ handle_asterisk_connection(FromAsterisk) ->
     receive start -> ok end,
     case(extract_username_and_headers_via_agi(FromAsterisk)) of
         {username, Username, headers, Headers} ->
-            ProcessDictionary = whereis(process_dictionary),
-            ProcessDictionary ! {tunnel_connection_request, self(), Username},
+            ConnectionSemaphore ! {tunnel_connection_request, self(), Username},
             receive
                 no_socket_waiting ->
                     report("Asterisk AGI call came in but no matching remote Adhearsion app for user ~p", [Username]),
@@ -139,7 +138,7 @@ handle_adhearsion_connection(FromAdhearsion) ->
 % Yay! A connection has been made. Let's now start forwarding packets back and forth.
 start_tunnel_session(Username, FromAdhearsion, FromAsterisk, Headers) ->
     
-    whereis(process_dictionary) ! {tunnel_completed, Username},
+    ConnectionSemaphore ! {tunnel_completed, Username},
     
     gen_tcp:send(FromAdhearsion, "authentication accepted\n"),
     gen_tcp:send(FromAsterisk, "SET VARIABLE BRIDGE_OUTCOME \"SUCCESS\""),
@@ -183,8 +182,7 @@ tunnel_loop(Username, FromAdhearsion, FromAsterisk) ->
     end.
 
 wait_for_agi_leg(Username) ->
-    ProcessDictionaryPid = whereis(process_dictionary),
-    ProcessDictionaryPid ! {tunnel_waiting, self(), Username},
+    ConnectionSemaphore ! {tunnel_waiting, self(), Username},
     
     %TimeoutInMilliseconds = config_get(default_adhearsion_wait_time) * 60 * 1000,
     TimeoutInMilliseconds = 5 * 50 * 1000,%config_get(default_adhearsion_wait_time) * 60 * 1000,
@@ -196,7 +194,7 @@ wait_for_agi_leg(Username) ->
             too_many_waiting
         after TimeoutInMilliseconds ->
             % Timeout after a pre-defined number of minutes
-            ProcessDictionaryPid ! {tunnel_completed, Username},
+            ConnectionSemaphore ! {tunnel_completed, Username},
             timeout
     end.
 
@@ -240,8 +238,6 @@ extract_username_and_headers_via_agi(FromAsterisk, Headers) ->
         _Error -> error
     end.
 
-
-% The process dictionary helps the Asterisk socket find the Adhearsion socket.
 
 username_for_md5(MD5) ->
     Script = config_get(authentication_script),

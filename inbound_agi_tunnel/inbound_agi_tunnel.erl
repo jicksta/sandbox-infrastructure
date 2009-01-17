@@ -1,5 +1,6 @@
 -module(inbound_agi_tunnel).
 -export([start/0, start/1, start/2]).
+-define(LOGGING_SPEC, ).
 
 start() ->
     start(["testing/config.testing.erl"]).
@@ -7,21 +8,19 @@ start() ->
 start([ConfigFile]) ->
     start(config_file, ConfigFile).
 
-start(config_file, ConfigFile) ->
+start(config_file, ConfigFile) ->    
+    
     {ok, ConfigDataStructure} = file:consult(ConfigFile),
+    
     Config = dict:from_list(ConfigDataStructure),
     
-    LogFilePath = dict:fetch(log_file, Config),
-
-    LogFile = case(file:open(LogFilePath, [append])) of
-        {ok, OpenedFile} -> OpenedFile;
-        Error ->
-            io:format("Could not open the log file \"~s\". Got error ~p", [LogFilePath, Error]),
-            erlang:error(Error)
-    end,
-
+    % Initialize log4erl
+    application:start(log4erl),
+    log4erl:add_logger(tunnel),
+    log4erl:add_file_appender(tunnel, dict:fetch(log4erl_spec, Config)),
+    
     ConnectionSemaphore = spawn_link(fun() -> connection_semaphore:start() end),
     
-    TunnelManager = tunnel_manager:new(Config, LogFile, ConnectionSemaphore),
+    TunnelManager = tunnel_manager:new(Config, ConnectionSemaphore),
     
-    spawn_link(fun() -> TunnelManager:start() end).
+    TunnelManager:start().

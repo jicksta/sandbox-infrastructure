@@ -1,0 +1,14 @@
+TODO:
+=====
+
+* Add formatters functions that can be added to appenders to change
+default formatting patters
+* Add support for pattern appender
+* Add support for file-based configuration to log4erl instead of only
+programmable-only configuration that is working now
+* Add support for SNMP appender
+* Add support for DB appender (MySQL, Postgres, Mnesia,...etc)
+* Add support for SMTP appender
+* Add support for NT event appender
+* Add support for syslog appender
+* Add support for NDC-like logs

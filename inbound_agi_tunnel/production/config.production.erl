@@ -14,9 +14,6 @@
 % is in minutes.
 {default_adhearsion_wait_time, 5}.
 
-% Which log file should we log to?
-{log_file, "/opt/sandbox-infrastructure/inbound_agi_tunnel/inbound_agi_tunnel.log"}.
-
 % This can be the 'false' atom if you want to just use the current directory
 {working_dir, "/"}.
 
@@ -24,3 +21,13 @@
 % password. That MD5 is given as argument to the script and the script is expected to print to STDOUT one of two things:
 % "Not found!" or the username from the database.
 {authentication_script, "/opt/sandbox-infrastructure/inbound_agi_tunnel/production/username_from_md5"}.
+
+% This is the Spec format for log4erl
+{log4erl_spec, {
+	"/var/log/sandbox",   % Log directory
+	"inbound_agi_tunnel", % Filename
+	{size, 500 * 1024},   % Size of file
+	4,                    % Rotations
+	"log",                % File extension
+	debug                 % Logging level
+}}.

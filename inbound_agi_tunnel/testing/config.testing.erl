@@ -14,9 +14,6 @@
 % is in minutes.
 {default_adhearsion_wait_time, 5}.
 
-% Which log file should we log to?
-{log_file, "testing/testing.log"}.
-
 % This can be the 'false' atom if you want to just use the current directory
 {working_dir, false}.
 
@@ -24,3 +21,14 @@
 % password. That MD5 is given as argument to the script and the script is expected to print to STDOUT one of two things:
 % "Not found!" or the username from the database.
 {authentication_script, "testing/not_found"}.
+
+% This is the Spec format for log4erl
+
+{log4erl_spec, { 
+  "logs",         % Log directory
+  "development",  % Filename
+  {size, 512000}, % Size of file
+  4,              % Rotations
+  "log",          % File extension
+  debug           % Logging level
+}}.

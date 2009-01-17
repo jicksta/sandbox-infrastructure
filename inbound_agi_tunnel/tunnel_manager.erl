@@ -170,12 +170,15 @@ tunnel_loop(Username, FromAdhearsion, FromAsterisk) ->
             gen_tcp:send(FromAdhearsion, Line),
             tunnel_loop(Username, FromAdhearsion, FromAsterisk);
         {tcp_closed, FromAsterisk} ->
+            ConnectionSemaphore ! {tunnel_completed, Username},
             report("Session for ~p stopped gracefully", [Username]),
             gen_tcp:close(FromAdhearsion);
         {tcp_closed, FromAdhearsion} ->
+            ConnectionSemaphore ! {tunnel_completed, Username},
             report("Session for ~p stopped gracefully", [Username]),
             gen_tcp:close(FromAsterisk);
-        Error ->
+        Error ->            
+            ConnectionSemaphore ! {tunnel_completed, Username},
             report("There was an error on one of the legs: ~p", [Error]),
             gen_tcp:close(FromAdhearsion),
             gen_tcp:close(FromAsterisk)

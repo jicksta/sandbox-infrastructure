@@ -23,4 +23,4 @@
 % When a connection comes in from the Adhearsion sandbox component, it sends an MD5 generated from the user's username and
 % password. That MD5 is given as argument to the script and the script is expected to print to STDOUT one of two things:
 % "Not found!" or the username from the database.
-{authentication_script, "/opt/sandbox-infrastructure/inbound_agi_tunnel/username_from_md5"}.
+{authentication_script, "/opt/sandbox-infrastructure/inbound_agi_tunnel/production/username_from_md5"}.

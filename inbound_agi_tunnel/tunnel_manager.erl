@@ -58,6 +58,7 @@ receive_asterisk_connection_loop(ServerSocket) ->
             receive_asterisk_connection_loop(ServerSocket);
         {error, Error} ->
             % report("Error in gen_tcp:accept/1 when getting an Asterisk socket: ~p", [Error]),
+            io:format("Got an error in teh asterisk connection loop! ~p", [Error]),
             receive_asterisk_connection_loop(ServerSocket)
     end.
 
@@ -72,6 +73,7 @@ receive_adhearsion_connection_loop(ServerSocket) ->
         	receive_adhearsion_connection_loop(ServerSocket);
         {error, Error} ->
             % report("Error in gen_tcp:accept/1 when getting an Adhearsion socket: ~p", [Error]),
+            io:format("Got an error in the adhearsion connection loop! ~p", [Error]),
             receive_adhearsion_connection_loop(ServerSocket)
     end.
 
@@ -203,7 +205,7 @@ check_authentication(TextualData)  ->
     [LastCharacter|_] = lists:reverse(TextualData),
     if 
         length(TextualData) =:= 33, LastCharacter =:= 10 ->
-            MD5 = util:chomp(TextualData),
+            MD5 = chomp(TextualData),
         	% Get the username based on the MD5 Hash
         	case(username_for_md5(MD5)) of
         	    {found, Username} -> {ok, Username};
@@ -233,7 +235,7 @@ extract_username_and_headers_via_agi(FromAsterisk, Headers) ->
 					error
             end;
         {tcp, FromAsterisk, HeaderLine} ->
-            report("Asterisk header: ~s", [util:chomp(HeaderLine)]),
+            report("Asterisk header: ~s", [chomp(HeaderLine)]),
             extract_username_and_headers_via_agi(FromAsterisk, [HeaderLine|Headers]);
         _Error -> error
     end.
@@ -244,14 +246,14 @@ extract_username_and_headers_via_agi(FromAsterisk, Headers) ->
 username_for_md5(MD5) ->
     Script = config_get(authentication_script),
     SearchResult = os:cmd(Script ++ " " ++ MD5),
-    case(util:chomp(SearchResult)) of
+    case(chomp(SearchResult)) of
         "Not found!" -> not_found;
         Username     -> {found, Username}
     end.
 
 % Turns "200 result=1 (jicksta)\n" into "jicksta" or bad_match atom if not in the correct format.
 extract_username_from_agi_variable_response(AGIResponse) ->
-	Text = util:chomp(AGIResponse),
+	Text = chomp(AGIResponse),
 	Expected = "200 result=1 (",
 	LastCharacter = lists:last(Text),
 	case(lists:sublist(Text, length(Expected)) == Expected) of
@@ -282,3 +284,11 @@ report(String, FormatArgs) ->
 
 config_get(Key) ->
     dict:fetch(Key, Config).
+
+chomp("") -> "";
+chomp(String) ->
+    case(lists:last(String) =:= 10) of
+        true -> lists:sublist(String, length(String) - 1);
+        false -> String
+    end.
+

@@ -118,6 +118,8 @@ handle_adhearsion_connection(FromAdhearsion) ->
                     gen_tcp:close(FromAdhearsion);
         		{ok, Username} ->
         		    report("Adhearsion request from ~s", [Username]),
+        		    % {active,true} used so we can get either a protocol mismatch or socket disconnect.
+        		    inet:setopts(FromAdhearsion, [{active, true}]),
         		    case(wait_for_agi_leg(Username)) of
         		        timeout ->
         		            report("Killing sandbox socket for user ~p due to timeout", [Username]),
@@ -125,6 +127,12 @@ handle_adhearsion_connection(FromAdhearsion) ->
                         too_many_waiting ->
                             report("Not allowing new sandbox connection because too many sockets are waiting"),
                             gen_tcp:send(FromAdhearsion, "wait 10\n"),
+                            gen_tcp:close(FromAdhearsion);
+                        protocol_error ->
+                            report("Adhearsion app sent data for some reason! Closing the socket."),
+                            gen_tcp:close(FromAdhearsion);
+                        socket_closed  ->
+                            report("Adhearsion app disconnected before an Asterisk AGI call came in."),
                             gen_tcp:close(FromAdhearsion);
         		        {bridge_legs, FromAsterisk, Headers} ->
         		            start_tunnel_session(Username, FromAdhearsion, FromAsterisk, Headers)
@@ -187,14 +195,19 @@ tunnel_loop(Username, FromAdhearsion, FromAsterisk) ->
 wait_for_agi_leg(Username) ->
     ConnectionSemaphore ! {tunnel_waiting, self(), Username},
     
-    %TimeoutInMilliseconds = config_get(default_adhearsion_wait_time) * 60 * 1000,
-    TimeoutInMilliseconds = 5 * 50 * 1000,%config_get(default_adhearsion_wait_time) * 60 * 1000,
+    TimeoutInMilliseconds = config_get(default_adhearsion_wait_time) * 60 * 1000,
     
     receive
         {bridge_request, FromAsterisk, Buffer} ->
             {bridge_legs, FromAsterisk, Buffer};
         too_many_waiting ->
-            too_many_waiting
+            too_many_waiting;
+        {tcp_closed, _FromAdhearsion} ->
+            ConnectionSemaphore ! {tunnel_completed, Username},
+            socket_closed;
+        {tcp, _Socket, _Data} ->
+            ConnectionSemaphore ! {tunnel_completed, Username},
+            protocol_error
         after TimeoutInMilliseconds ->
             % Timeout after a pre-defined number of minutes
             ConnectionSemaphore ! {tunnel_completed, Username},

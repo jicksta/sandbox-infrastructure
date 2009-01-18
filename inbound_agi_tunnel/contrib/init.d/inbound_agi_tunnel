@@ -1,0 +1,42 @@
+#!/bin/bash
+
+RUN_AS_USER=sandbox
+INBOUND_AGI_TUNNEL_DIR=/opt/sandbox-infrastructure/inbound_agi_tunnel
+
+start() {
+        echo "Starting Sandbox Erlang AGI Tunnel: "
+        if [ "x$USER" != "x$RUN_AS_USER" ]; then
+          su - $RUN_AS_USER -c "erl -detached -pa $INBOUND_AGI_TUNNEL_DIR/ebin -noshell -s inbound_agi_tunnel start $INBOUND_AGI_TUNNEL_DIR/envs/production/config.production.erl"
+        else
+          erl -detached -pa $INBOUND_AGI_TUNNEL_DIR/ebin -noshell -s inbound_agi_tunnel start $INBOUND_AGI_TUNNEL_DIR/envs/production/config.production.erl
+        fi
+        echo "done."
+}
+stop() {
+        echo "Shutting down Sandbox Erlang AGI Tunnel: "
+        #if [ "x$USER" != "x$RUN_AS_USER" ]; then
+        #  su - $RUN_AS_USER -c "ps aux | grep sandbox | grep 'inbound_agi_tunnel start' | awk '{ print $2 }' | xargs kill -9"
+        #else
+          ps aux | grep sandbox | grep 'inbound_agi_tunnel start' | awk '{ print $2 }' | xargs kill -9
+        #fi
+        echo "done."
+}
+
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  restart)
+        stop
+        sleep 1
+        start
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart}"
+esac
+
+exit 0
+

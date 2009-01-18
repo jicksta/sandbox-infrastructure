@@ -20,13 +20,13 @@
 % When a connection comes in from the Adhearsion sandbox component, it sends an MD5 generated from the user's username and
 % password. That MD5 is given as argument to the script and the script is expected to print to STDOUT one of two things:
 % "Not found!" or the username from the database.
-{authentication_script, "/opt/sandbox-infrastructure/inbound_agi_tunnel/production/username_from_md5"}.
+{authentication_script, "/opt/sandbox-infrastructure/inbound_agi_tunnel/envs/production/username_from_md5"}.
 
 % This is the Spec format for log4erl
 {log4erl_spec, {
 	"/var/log/sandbox",   % Log directory
 	"inbound_agi_tunnel", % Filename
-	{size, 500 * 1024},   % Size of file
+	{size, 512000},       % Size of file
 	4,                    % Rotations
 	"log",                % File extension
 	debug                 % Logging level

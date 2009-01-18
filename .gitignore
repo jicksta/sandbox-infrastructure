@@ -3,6 +3,6 @@ erl_crash.dump
 .DS_Store
 *.log
 inbound_agi_tunnel/tmp/*
-inbound_agi_tunnel/ebin/*
+inbound_agi_tunnel/ebin/*.beam
 call-authenticator/log/*.log
 .svn

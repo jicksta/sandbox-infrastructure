@@ -1,22 +1,2 @@
-#!/usr/bin/env ruby
-require 'rubygems'
-require 'active_record'
-
-sought_md5 = ARGV.first
-
-PATH_TO_RAILS = "/var/www/adhearsion.com"
-
-settings = YAML.load_file PATH_TO_RAILS + "/config/database.yml"
-
-ActiveRecord::Base.establish_connection settings["production"]
-
-require PATH_TO_RAILS + "/app/models/sandbox_user"
-
-sandbox_user = SandboxUser.find_by_identifier_hash sought_md5
-
-if sandbox_user
-  print sandbox_user.username
-else
-  print "Not found!"
-  exit 1
-end
+#!/bin/bash
+curl http://adhearsion.com/api/username_from_md5/$1

@@ -1,0 +1,2 @@
+# You can use this file for component-specific configuration.
+tts_sound_directory: /opt/sandbox-infrastructure/call-authenticator/sound_files/ 

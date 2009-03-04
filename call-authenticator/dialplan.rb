@@ -45,7 +45,7 @@ pin_authentication {
         play "#{@sound_file_dir}/please_try_again"
       end
     else
-      variable "SANDBOX_USERNAME" => user.username
+      variable "SANDBOX_USERNAME" => user.login
       cnt = 3
     end
   end
